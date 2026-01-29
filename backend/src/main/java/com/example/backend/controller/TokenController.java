@@ -10,7 +10,7 @@ import com.example.backend.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import lombok.Data;
-@Data
+
 @RestController
 @RequestMapping("/api/tokens")
 @RequiredArgsConstructor
@@ -30,9 +30,7 @@ public class TokenController {
     @GetMapping("/queue/{serviceTypeId}")
     public QueueStatusResponse getQueueStatus(@PathVariable Long serviceTypeId) {
         QueueStatusResponse response = new QueueStatusResponse();
-        response.setWaitingCount(queueService.getWaitingCount(
-                new ServiceType(serviceTypeId)
-        ));
+        response.setWaitingCount(queueService.getWaitingCount(serviceTypeId));
         return response;
     }
 

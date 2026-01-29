@@ -14,9 +14,6 @@ import lombok.Data;
 @RestController
 @RequestMapping("/api/counters")
 @RequiredArgsConstructor
-@Setter
-@Getter
-@Data
 public class CounterController {
     private final CounterService counterService;
     private final ServiceTypeRepository serviceTypeRepository;

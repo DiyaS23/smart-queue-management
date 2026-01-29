@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import lombok.Data;
 
 import java.util.List;
-@Data
+
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
