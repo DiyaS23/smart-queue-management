@@ -5,13 +5,17 @@ import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
 import com.example.backend.repository.ServiceTypeRepository;
 import com.example.backend.service.CounterService;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.springframework.web.bind.annotation.*;
 import lombok.Data;
 
 @RestController
 @RequestMapping("/api/counters")
 @RequiredArgsConstructor
+@Setter
+@Getter
 @Data
 public class CounterController {
     private final CounterService counterService;
