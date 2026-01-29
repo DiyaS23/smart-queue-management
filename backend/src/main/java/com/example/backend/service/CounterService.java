@@ -1,11 +1,13 @@
 package com.example.backend.service;
 
 import com.example.backend.entity.Counter;
+import com.example.backend.entity.ServiceMetric;
 import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
 import com.example.backend.entity.enums.CounterStatus;
 import com.example.backend.entity.enums.TokenStatus;
 import com.example.backend.repository.CounterRepository;
+import com.example.backend.repository.ServiceMetricRepository;
 import com.example.backend.repository.TokenRepository;
 import com.example.backend.websocket.QueueEvent;
 import com.example.backend.websocket.QueueEventPublisher;
@@ -13,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Service
@@ -23,6 +26,7 @@ public class CounterService {
     private final TokenRepository tokenRepository;
     private final QueueService queueService;
     private final QueueEventPublisher eventPublisher;
+    private final ServiceMetricRepository metricRepository;
 
     @Transactional
     public Token callNextToken(Long counterId, ServiceType serviceType) {
@@ -70,6 +74,7 @@ public class CounterService {
         token.setCompletedAt(LocalDateTime.now());
 
         tokenRepository.save(token);
+        updateMetrics(token);
         eventPublisher.publishQueueUpdate(
                 new QueueEvent(
                         "TOKEN_COMPLETED",
@@ -89,5 +94,35 @@ public class CounterService {
         token.setStatus(TokenStatus.SKIPPED);
         tokenRepository.save(token);
     }
+    private void updateMetrics(Token token) {
+
+        ServiceMetric metric = metricRepository
+                .findByServiceType(token.getServiceType())
+                .orElseGet(() -> {
+                    ServiceMetric m = new ServiceMetric();
+                    m.setServiceType(token.getServiceType());
+                    m.setAvgServiceTimeMinutes(5); // initial default
+                    m.setTotalTokensServed(0);
+                    return m;
+                });
+
+        long serviceTime = Duration.between(
+                token.getCalledAt(),
+                token.getCompletedAt()
+        ).toMinutes();
+
+        long total = metric.getTotalTokensServed();
+
+        double newAvg =
+                ((metric.getAvgServiceTimeMinutes() * total) + serviceTime)
+                        / (total + 1);
+
+        metric.setAvgServiceTimeMinutes(newAvg);
+        metric.setTotalTokensServed(total + 1);
+        metric.setLastUpdated(LocalDateTime.now());
+
+        metricRepository.save(metric);
+    }
+
 }
 
