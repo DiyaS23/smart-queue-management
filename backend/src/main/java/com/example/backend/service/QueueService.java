@@ -3,6 +3,7 @@ package com.example.backend.service;
 import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
 import com.example.backend.entity.enums.TokenStatus;
+import com.example.backend.repository.ServiceTypeRepository;
 import com.example.backend.repository.TokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import java.util.List;
 public class QueueService {
 
     private final TokenRepository tokenRepository;
+    private final ServiceTypeRepository serviceTypeRepository;
 
     /**
      * Core queue algorithm:
@@ -51,7 +53,10 @@ public class QueueService {
         return normalTokens.get(0);
     }
 
-    public long getWaitingCount(ServiceType serviceType) {
+    public long getWaitingCount(Long serviceTypeId) {
+        ServiceType serviceType = serviceTypeRepository.findById(serviceTypeId)
+                .orElseThrow(() -> new RuntimeException("ServiceType not found"));
+
         return tokenRepository.countByServiceTypeAndStatus(
                 serviceType, TokenStatus.WAITING
         );
