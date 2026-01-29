@@ -7,6 +7,8 @@ import com.example.backend.entity.enums.CounterStatus;
 import com.example.backend.entity.enums.TokenStatus;
 import com.example.backend.repository.CounterRepository;
 import com.example.backend.repository.TokenRepository;
+import com.example.backend.websocket.QueueEvent;
+import com.example.backend.websocket.QueueEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ public class CounterService {
     private final CounterRepository counterRepository;
     private final TokenRepository tokenRepository;
     private final QueueService queueService;
+    private final QueueEventPublisher eventPublisher;
 
     @Transactional
     public Token callNextToken(Long counterId, ServiceType serviceType) {
@@ -43,7 +46,19 @@ public class CounterService {
         nextToken.setStatus(TokenStatus.SERVING);
         nextToken.setCalledAt(LocalDateTime.now());
 
-        return tokenRepository.save(nextToken);
+        Token saved = tokenRepository.save(nextToken);
+
+        eventPublisher.publishQueueUpdate(
+                new QueueEvent(
+                        "TOKEN_CALLED",
+                        saved.getTokenNumber(),
+                        counter.getName(),
+                        serviceType.getName(),
+                        saved.getStatus().name()
+                )
+        );
+
+        return saved;
     }
 
     @Transactional
@@ -55,6 +70,15 @@ public class CounterService {
         token.setCompletedAt(LocalDateTime.now());
 
         tokenRepository.save(token);
+        eventPublisher.publishQueueUpdate(
+                new QueueEvent(
+                        "TOKEN_COMPLETED",
+                        token.getTokenNumber(),
+                        token.getCounter().getName(),
+                        token.getServiceType().getName(),
+                        token.getStatus().name()
+                )
+        );
     }
 
     @Transactional

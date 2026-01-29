@@ -5,6 +5,8 @@ import com.example.backend.entity.Token;
 import com.example.backend.entity.enums.TokenStatus;
 import com.example.backend.repository.ServiceTypeRepository;
 import com.example.backend.repository.TokenRepository;
+import com.example.backend.websocket.QueueEvent;
+import com.example.backend.websocket.QueueEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ public class TokenService {
 
     private final TokenRepository tokenRepository;
     private final ServiceTypeRepository serviceTypeRepository;
+    private final QueueEventPublisher eventPublisher;
 
     @Transactional
     public Token createToken(Long serviceTypeId, boolean priority) {
@@ -30,7 +33,19 @@ public class TokenService {
         token.setCreatedAt(LocalDateTime.now());
         token.setTokenNumber(generateTokenNumber(serviceType));
 
-        return tokenRepository.save(token);
+        Token saved = tokenRepository.save(token);
+
+        eventPublisher.publishQueueUpdate(
+                new QueueEvent(
+                        "TOKEN_CREATED",
+                        saved.getTokenNumber(),
+                        null,
+                        serviceType.getName(),
+                        saved.getStatus().name()
+                )
+        );
+
+        return saved;
     }
 
     private String generateTokenNumber(ServiceType serviceType) {
