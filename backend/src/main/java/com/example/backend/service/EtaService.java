@@ -20,16 +20,20 @@ public class EtaService {
     private final TokenRepository tokenRepository;
 
     public long calculateEtaMinutes(ServiceType serviceType, Token token) {
-
+        if (token.getStatus() == TokenStatus.COMPLETED ||
+                token.getStatus() == TokenStatus.SERVING) {
+            return 0;
+        }
         ServiceMetric metric = metricRepository
                 .findByServiceType(serviceType)
                 .orElseThrow(() -> new RuntimeException("Metrics not found"));
 
         long tokensAhead =
-                tokenRepository.countByServiceTypeAndStatus(
-                        serviceType, TokenStatus.WAITING
+                tokenRepository.countByServiceTypeAndStatusAndCreatedAtBefore(
+                        serviceType,
+                        TokenStatus.WAITING,
+                        token.getCreatedAt()
                 );
-        if (tokensAhead > 0) tokensAhead--;
         long activeCounters =
                 counterRepository.findByStatus(CounterStatus.OPEN).size();
 

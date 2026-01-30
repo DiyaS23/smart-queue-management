@@ -69,6 +69,9 @@ public class CounterService {
     public void completeToken(Long tokenId) {
         Token token = tokenRepository.findById(tokenId)
                 .orElseThrow(() -> new RuntimeException("Token not found"));
+        if (token.getStatus() != TokenStatus.SERVING) {
+            throw new RuntimeException("Only SERVING tokens can be completed");
+        }
 
         token.setStatus(TokenStatus.COMPLETED);
         token.setCompletedAt(LocalDateTime.now());
@@ -106,6 +109,10 @@ public class CounterService {
                     return m;
                 });
 
+        if (token.getCalledAt() == null) {
+            // Token was never served properly → do NOT update metrics
+            return;
+        }
         long serviceTime = Duration.between(
                 token.getCalledAt(),
                 token.getCompletedAt()

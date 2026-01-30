@@ -33,6 +33,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/tokens/**").permitAll()
                         .requestMatchers("/api/display/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/metrics/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
+
+
 
                         // STAFF
                         .requestMatchers("/api/counters/**").hasRole("STAFF")
