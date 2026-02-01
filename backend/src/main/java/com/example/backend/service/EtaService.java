@@ -11,6 +11,8 @@ import com.example.backend.repository.TokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class EtaService {
@@ -24,9 +26,25 @@ public class EtaService {
                 token.getStatus() == TokenStatus.SERVING) {
             return 0;
         }
+//        ServiceMetric metric = metricRepository
+//                .findByServiceType(serviceType)
+//                .orElseThrow(() -> new RuntimeException("Metrics not found"));
         ServiceMetric metric = metricRepository
                 .findByServiceType(serviceType)
-                .orElseThrow(() -> new RuntimeException("Metrics not found"));
+                .orElseGet(() -> {
+                    ServiceMetric m = new ServiceMetric();
+                    m.setServiceType(serviceType);
+                    Integer dbAvgTime = serviceType.getAvgServiceTime();
+                    int safeAvgTime = (dbAvgTime != null) ? dbAvgTime : 10; // Default to 10 mins if null
+
+                    m.setAvgServiceTimeMinutes(safeAvgTime);
+
+                    m.setTotalTokensServed(0L);
+                    m.setLastUpdated(LocalDateTime.now());
+
+                    return metricRepository.save(m);
+                });
+
 
         long tokensAhead =
                 tokenRepository.countByServiceTypeAndStatusAndCreatedAtBefore(

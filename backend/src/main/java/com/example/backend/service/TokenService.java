@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -20,7 +21,12 @@ public class TokenService {
     private final TokenRepository tokenRepository;
     private final ServiceTypeRepository serviceTypeRepository;
     private final QueueEventPublisher eventPublisher;
+// Inside TokenService.java
 
+    public List<Token> getTokensByStatus(TokenStatus status) {
+        // Assuming you have a TokenRepository injected as 'tokenRepository'
+        return tokenRepository.findByStatus(status);
+    }
     @Transactional
     public Token createToken(Long serviceTypeId, boolean priority) {
         ServiceType serviceType = serviceTypeRepository.findById(serviceTypeId)

@@ -25,17 +25,27 @@ public class Token {
     private String tokenNumber; // A101, B202
 
     @ManyToOne
-    @JoinColumn(name = "service_id")
+    @JoinColumn(name = "service_id", nullable = false)
     private ServiceType serviceType;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private TokenStatus status;
 
     private boolean priority;
 
+//    @ManyToOne
+//    @JoinColumn(name = "counter_id")
+//    private Counter counter;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "patient_id")
+    private Patient patient;
+
     @ManyToOne
-    @JoinColumn(name = "counter_id")
-    private Counter counter;
+    @JoinColumn(name = "doctor_id")
+    private Counter doctor; // nullable (department queue)
+
 
     private LocalDateTime createdAt;
     private LocalDateTime calledAt;

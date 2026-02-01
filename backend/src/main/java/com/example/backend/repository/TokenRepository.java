@@ -22,7 +22,7 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
             TokenStatus status,
             LocalDateTime createdAt
     );
-
+    List<Token> findByStatus(TokenStatus status);
 
     // Count tokens ahead in queue
     long countByServiceTypeAndStatus(ServiceType serviceType, TokenStatus status);

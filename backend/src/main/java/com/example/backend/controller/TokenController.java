@@ -5,11 +5,15 @@ import com.example.backend.dto.QueueStatusResponse;
 import com.example.backend.dto.TokenResponse;
 import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
+import com.example.backend.entity.enums.TokenStatus;
 import com.example.backend.service.QueueService;
 import com.example.backend.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import lombok.Data;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/tokens")
@@ -27,6 +31,18 @@ public class TokenController {
         return mapToResponse(token);
     }
 
+    @GetMapping("/status/{status}")
+    public List<TokenResponse> getTokensByStatus(@PathVariable String status) {
+        // Convert String to Enum safely
+        TokenStatus tokenStatus = TokenStatus.valueOf(status.toUpperCase());
+
+        // You need to ensure tokenService has this method (see Step 2)
+        List<Token> tokens = tokenService.getTokensByStatus(tokenStatus);
+
+        return tokens.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
     @GetMapping("/queue/{serviceTypeId}")
     public QueueStatusResponse getQueueStatus(@PathVariable Long serviceTypeId) {
         QueueStatusResponse response = new QueueStatusResponse();
