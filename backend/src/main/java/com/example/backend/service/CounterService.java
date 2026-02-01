@@ -22,6 +22,8 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class CounterService {
 
+
+
     private final CounterRepository counterRepository;
     private final TokenRepository tokenRepository;
     private final QueueService queueService;
@@ -38,15 +40,16 @@ public class CounterService {
             throw new RuntimeException("Counter is not open");
         }
 
-        // Prevent double serving
-        tokenRepository.findByCounterAndStatus(counter, TokenStatus.SERVING)
-                .ifPresent(t -> {
-                    throw new RuntimeException("Counter already serving a token");
-                });
+        // Prevent double serving (doctor already serving someone)
+        tokenRepository.findFirstByDoctorAndStatusOrderByCreatedAtAsc(
+                counter, TokenStatus.SERVING
+        ).ifPresent(t -> {
+            throw new RuntimeException("Doctor already serving a token");
+        });
 
-        Token nextToken = queueService.getNextToken(serviceType);
+        Token nextToken = queueService.getNextToken(serviceType, counter);
 
-        nextToken.setCounter(counter);
+        nextToken.setDoctor(counter);
         nextToken.setStatus(TokenStatus.SERVING);
         nextToken.setCalledAt(LocalDateTime.now());
 
@@ -67,22 +70,25 @@ public class CounterService {
 
     @Transactional
     public void completeToken(Long tokenId) {
+
         Token token = tokenRepository.findById(tokenId)
                 .orElseThrow(() -> new RuntimeException("Token not found"));
+
         if (token.getStatus() != TokenStatus.SERVING) {
             throw new RuntimeException("Only SERVING tokens can be completed");
         }
 
         token.setStatus(TokenStatus.COMPLETED);
         token.setCompletedAt(LocalDateTime.now());
-
         tokenRepository.save(token);
+
         updateMetrics(token);
+
         eventPublisher.publishQueueUpdate(
                 new QueueEvent(
                         "TOKEN_COMPLETED",
                         token.getTokenNumber(),
-                        token.getCounter().getName(),
+                        token.getDoctor().getName(),
                         token.getServiceType().getName(),
                         token.getStatus().name()
                 )
@@ -91,35 +97,35 @@ public class CounterService {
 
     @Transactional
     public void skipToken(Long tokenId) {
+
         Token token = tokenRepository.findById(tokenId)
                 .orElseThrow(() -> new RuntimeException("Token not found"));
 
         token.setStatus(TokenStatus.SKIPPED);
         tokenRepository.save(token);
     }
+
     private void updateMetrics(Token token) {
+
+        if (token.getCalledAt() == null || token.getCompletedAt() == null) {
+            return;
+        }
 
         ServiceMetric metric = metricRepository
                 .findByServiceType(token.getServiceType())
                 .orElseGet(() -> {
                     ServiceMetric m = new ServiceMetric();
                     m.setServiceType(token.getServiceType());
-                    m.setAvgServiceTimeMinutes(5); // initial default
+                    m.setAvgServiceTimeMinutes(5);
                     m.setTotalTokensServed(0);
                     return m;
                 });
 
-        if (token.getCalledAt() == null) {
-            // Token was never served properly → do NOT update metrics
-            return;
-        }
-        long serviceTime = Duration.between(
-                token.getCalledAt(),
-                token.getCompletedAt()
-        ).toMinutes();
+        long serviceTime =
+                Duration.between(token.getCalledAt(), token.getCompletedAt())
+                        .toMinutes();
 
         long total = metric.getTotalTokensServed();
-
         double newAvg =
                 ((metric.getAvgServiceTimeMinutes() * total) + serviceTime)
                         / (total + 1);
