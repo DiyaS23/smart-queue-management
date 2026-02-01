@@ -5,6 +5,7 @@ import com.example.backend.entity.ServiceMetric;
 import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
 import com.example.backend.entity.enums.CounterStatus;
+import com.example.backend.entity.enums.DoctorAvailability;
 import com.example.backend.entity.enums.TokenStatus;
 import com.example.backend.repository.CounterRepository;
 import com.example.backend.repository.ServiceMetricRepository;
@@ -55,13 +56,26 @@ public class CounterService {
 
         Token saved = tokenRepository.save(nextToken);
 
-        eventPublisher.publishQueueUpdate(
+        QueueEvent event = new QueueEvent(
+                "TOKEN_CALLED",
+                saved.getTokenNumber(),
+                counter.getName(),
+                serviceType.getName(),
+                saved.getStatus().name()
+        );
+
+// existing admin/staff update
+        eventPublisher.publishQueueUpdate(event);
+
+// 🔔 NEW: patient notification
+        eventPublisher.publishToPatient(
+                saved.getTokenNumber(),
                 new QueueEvent(
-                        "TOKEN_CALLED",
+                        "TOKEN_CALLED_FOR_PATIENT",
                         saved.getTokenNumber(),
                         counter.getName(),
                         serviceType.getName(),
-                        saved.getStatus().name()
+                        "SERVING"
                 )
         );
 
@@ -81,7 +95,11 @@ public class CounterService {
         token.setStatus(TokenStatus.COMPLETED);
         token.setCompletedAt(LocalDateTime.now());
         tokenRepository.save(token);
-
+        Counter doctor = token.getDoctor();
+        if (doctor != null) {
+            doctor.setAvailability(DoctorAvailability.AVAILABLE);
+            counterRepository.save(doctor);
+        }
         updateMetrics(token);
 
         eventPublisher.publishQueueUpdate(

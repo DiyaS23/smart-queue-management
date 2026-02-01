@@ -3,7 +3,10 @@ package com.example.backend.service;
 import com.example.backend.entity.Counter;
 import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
+import com.example.backend.entity.enums.DoctorAvailability;
+import com.example.backend.entity.enums.TokenPriority;
 import com.example.backend.entity.enums.TokenStatus;
+import com.example.backend.repository.CounterRepository;
 import com.example.backend.repository.ServiceTypeRepository;
 import com.example.backend.repository.TokenRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,64 +21,36 @@ import java.util.Optional;
 public class QueueService {
 
     private final TokenRepository tokenRepository;
+    private final CounterRepository counterRepository;
     private final ServiceTypeRepository serviceTypeRepository;
 
     /**
-     * Core queue algorithm:
-     * 1. Priority tokens first
-     * 2. FIFO within same priority
+     * CORE QUEUE LOGIC (Phase‑4 safe)
+     *
+     * Priority order:
+     * 1. Doctor‑specific waiting token (if doctor is assigned)
+     * 2. Department‑level waiting token
      */
-//    @Transactional
-//    public Token getNextToken(ServiceType serviceType) {
-//        if (doctor != null) {
-//            Optional<Token> doctorToken =
-//                    tokenRepository.findFirstByDoctorAndStatusOrderByCreatedAtAsc(
-//                            doctor, TokenStatus.WAITING
-//                    );
-//
-//            if (doctorToken.isPresent()) {
-//                return doctorToken.get();
-//            }
-//        }
-//        return tokenRepository
-//                .findFirstByServiceTypeAndDoctorIsNullAndStatusOrderByCreatedAtAsc(
-//                        service, TokenStatus.WAITING
-//                )
-//                .orElseThrow(() -> new RuntimeException("No tokens in queue"));
-        // 1️⃣ Priority tokens
-//        List<Token> priorityTokens =
-//                tokenRepository.findByServiceTypeAndStatusOrderByCreatedAtAsc(
-//                                serviceType, TokenStatus.WAITING
-//                        ).stream()
-//                        .filter(Token::isPriority)
-//                        .toList();
-//
-//        if (!priorityTokens.isEmpty()) {
-//            return priorityTokens.get(0);
-//        }
-//
-//        // 2️⃣ Normal FIFO
-//        List<Token> normalTokens =
-//                tokenRepository.findByServiceTypeAndStatusOrderByCreatedAtAsc(
-//                                serviceType, TokenStatus.WAITING
-//                        ).stream()
-//                        .filter(t -> !t.isPriority())
-//                        .toList();
-//
-//        if (normalTokens.isEmpty()) {
-//            throw new RuntimeException("No tokens in queue");
-//        }
-//
-//        return normalTokens.get(0);
-//    }
     @Transactional
     public Token getNextToken(ServiceType serviceType, Counter doctor) {
 
-        // 1️⃣ Doctor-specific queue
+        Optional<Token> emergency =
+                tokenRepository.findFirstByStatusAndApprovedAndPriorityTypeOrderByCreatedAtAsc(
+                        TokenStatus.WAITING,
+                        true,
+                        TokenPriority.URGENT
+                );
+
+        if (emergency.isPresent()) {
+            return emergency.get();
+        }
+
+        // 1️⃣ Doctor‑specific queue
         if (doctor != null) {
             Optional<Token> doctorToken =
                     tokenRepository.findFirstByDoctorAndStatusOrderByCreatedAtAsc(
-                            doctor, TokenStatus.WAITING
+                            doctor,
+                            TokenStatus.WAITING
                     );
 
             if (doctorToken.isPresent()) {
@@ -83,21 +58,46 @@ public class QueueService {
             }
         }
 
-        // 2️⃣ Department queue
+        // 2️⃣ Department‑level queue (no doctor assigned)
         return tokenRepository
                 .findFirstByServiceTypeAndDoctorIsNullAndStatusOrderByCreatedAtAsc(
-                        serviceType, TokenStatus.WAITING
+                        serviceType,
+                        TokenStatus.WAITING
                 )
                 .orElseThrow(() -> new RuntimeException("No tokens in queue"));
     }
 
+    /**
+     * Waiting count for ETA / UI
+     */
     public long getWaitingCount(Long serviceTypeId) {
         ServiceType serviceType = serviceTypeRepository.findById(serviceTypeId)
                 .orElseThrow(() -> new RuntimeException("Service type not found"));
 
         return tokenRepository.countByServiceTypeAndStatus(
-                serviceType, TokenStatus.WAITING
+                serviceType,
+                TokenStatus.WAITING
         );
+    }
+
+    /**
+     * Auto‑assign available doctor (Phase‑4 polish)
+     * Used when token is created WITHOUT doctor
+     */
+    @Transactional
+    public void autoAssignDoctor(Token token) {
+
+        Optional<Counter> availableDoctor =
+                counterRepository.findFirstByDepartmentsContainsAndAvailability(
+                        token.getServiceType(),
+                        DoctorAvailability.AVAILABLE
+                );
+
+        if (availableDoctor.isPresent()) {
+            Counter doctor = availableDoctor.get();
+            token.setDoctor(doctor);
+            doctor.setAvailability(DoctorAvailability.BUSY);
+        }
     }
 }
 

@@ -4,26 +4,41 @@ import com.example.backend.dto.PatientTokenHistoryResponse;
 import com.example.backend.service.PatientHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/patients")
+@RequestMapping("/api/patients/history")
 @RequiredArgsConstructor
 public class PatientController {
 
     private final PatientHistoryService historyService;
 
-    // Public (patients don’t login)
-    @GetMapping("/history")
-    public ResponseEntity<List<PatientTokenHistoryResponse>> getHistory(
-            @RequestParam String phone) {
+    // 🔹 All visits
+    @GetMapping
+    public List<PatientTokenHistoryResponse> getHistory(
+            @RequestParam String phone
+    ) {
+        return historyService.getPatientHistoryByPhone(phone);
+    }
 
-        return ResponseEntity.ok(historyService.getHistoryByPhone(phone));
+    // 🔹 Filter by department
+    @GetMapping("/service/{serviceId}")
+    public List<PatientTokenHistoryResponse> byService(
+            @RequestParam String phone,
+            @PathVariable Long serviceId
+    ) {
+        return historyService.filterByService(phone, serviceId);
+    }
+
+    // 🔹 Filter by doctor
+    @GetMapping("/doctor/{doctorId}")
+    public List<PatientTokenHistoryResponse> byDoctor(
+            @RequestParam String phone,
+            @PathVariable Long doctorId
+    ) {
+        return historyService.filterByDoctor(phone, doctorId);
     }
 }
 

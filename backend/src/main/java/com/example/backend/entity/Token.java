@@ -1,5 +1,6 @@
 package com.example.backend.entity;
 
+import com.example.backend.entity.enums.TokenPriority;
 import com.example.backend.entity.enums.TokenStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -33,10 +34,13 @@ public class Token {
     private TokenStatus status;
 
     private boolean priority;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TokenPriority priorityType = TokenPriority.NORMAL;
 
-//    @ManyToOne
-//    @JoinColumn(name = "counter_id")
-//    private Counter counter;
+    @Column(nullable = false)
+    private boolean approved = true; // emergency approval
+
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "patient_id")

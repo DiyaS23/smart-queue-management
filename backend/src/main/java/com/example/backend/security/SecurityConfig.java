@@ -35,6 +35,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/metrics/**").permitAll()
                         .requestMatchers("/api/services/**").permitAll()
+                        .requestMatchers("/api/patients/history/**").permitAll()
                         .requestMatchers("/ws/**","/ws/info/**","/topic/**").permitAll()
 
 
@@ -44,6 +45,8 @@ public class SecurityConfig {
 
                         // ADMIN
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/dashboard/**").hasRole("ADMIN")
+
 
                         .anyRequest().authenticated()
                 )

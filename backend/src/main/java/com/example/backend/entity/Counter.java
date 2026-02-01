@@ -1,6 +1,7 @@
 package com.example.backend.entity;
 
 import com.example.backend.entity.enums.CounterStatus;
+import com.example.backend.entity.enums.DoctorAvailability;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -47,6 +48,8 @@ public class Counter {
     private Set<ServiceType> departments = new HashSet<>();
     @Column(nullable = false)
     private Boolean available = true;
+    @Enumerated(EnumType.STRING)
+    private DoctorAvailability availability = DoctorAvailability.AVAILABLE;
 
     private Integer maxPatientsPerDay;
 }

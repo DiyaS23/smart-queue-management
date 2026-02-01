@@ -6,6 +6,8 @@ public enum TokenStatus {
     SERVING,
     COMPLETED,
     SKIPPED,
+    PENDING_APPROVAL,
     CANCELLED
+
 }
 

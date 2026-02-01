@@ -32,6 +32,7 @@ public class TokenController {
         );
         return mapToResponse(token);
     }
+    // NEW
     @PostMapping("/patient")
     public TokenResponse createPatientToken(
             @RequestBody @Valid CreatePatientTokenRequest request) {
@@ -66,9 +67,6 @@ public class TokenController {
         res.setServiceName(token.getServiceType().getName());
         res.setStatus(token.getStatus().name());
         res.setPriority(token.isPriority());
-        res.setCounterName(
-                token.getDoctor() != null ? token.getDoctor().getName() : null
-        );
         res.setCreatedAt(token.getCreatedAt());
         res.setPatientName(
                 token.getPatient() != null ? token.getPatient().getName() : null

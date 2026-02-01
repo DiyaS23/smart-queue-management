@@ -18,7 +18,8 @@ public class CreatePatientTokenRequest {
     private Long serviceTypeId;
 
     private Long doctorId; // optional
+    private boolean urgent; // instead of generic priority
 
-    private boolean priority;
+
 }
 

@@ -1,10 +1,15 @@
 package com.example.backend.service;
 
+import com.example.backend.dto.CreatePatientDto;
 import com.example.backend.dto.CreatePatientTokenRequest;
+import com.example.backend.dto.CreateTokenRequest;
+import com.example.backend.dto.TokenResponse;
 import com.example.backend.entity.Counter;
 import com.example.backend.entity.Patient;
 import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
+import com.example.backend.entity.enums.DoctorAvailability;
+import com.example.backend.entity.enums.TokenPriority;
 import com.example.backend.entity.enums.TokenStatus;
 import com.example.backend.repository.CounterRepository;
 import com.example.backend.repository.PatientRepository;
@@ -18,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -34,19 +40,44 @@ public class TokenService {
         // Assuming you have a TokenRepository injected as 'tokenRepository'
         return tokenRepository.findByStatus(status);
     }
+
+    @Transactional
+    public Token createToken(Long serviceTypeId, boolean priority) {
+
+        ServiceType serviceType = serviceTypeRepository.findById(serviceTypeId)
+                .orElseThrow(() -> new RuntimeException("Service not found"));
+
+        Token token = new Token();
+        token.setServiceType(serviceType);
+        token.setPriority(priority);
+        token.setPriorityType(TokenPriority.NORMAL);
+        token.setApproved(true);
+        token.setStatus(TokenStatus.WAITING);
+        token.setCreatedAt(LocalDateTime.now());
+        token.setTokenNumber(generateTokenNumber(serviceType));
+
+        Token saved = tokenRepository.save(token);
+
+        eventPublisher.publishQueueUpdate(
+                new QueueEvent("TOKEN_CREATED",
+                        saved.getTokenNumber(),
+                        null,
+                        serviceType.getName(),
+                        saved.getStatus().name())
+        );
+
+        return saved;
+    }
+
+    // -------------------------------
+    // NEW HOSPITAL FLOW
+    // -------------------------------
     @Transactional
     public Token createPatientToken(CreatePatientTokenRequest req) {
+
         Patient patient = patientRepository
                 .findByPhone(req.getPatient().getPhone())
-                .orElseGet(() -> {
-                    Patient p = new Patient();
-                    p.setName(req.getPatient().getName());
-                    p.setAge(req.getPatient().getAge());
-                    p.setGender(req.getPatient().getGender());
-                    p.setPhone(req.getPatient().getPhone());
-                    p.setMedicalId(req.getPatient().getMedicalId());
-                    return patientRepository.save(p);
-                });
+                .orElseGet(() -> patientRepository.save(mapPatient(req.getPatient())));
 
         ServiceType service = serviceTypeRepository.findById(req.getServiceTypeId())
                 .orElseThrow(() -> new RuntimeException("Service not found"));
@@ -59,46 +90,47 @@ public class TokenService {
             if (!doctor.getDepartments().contains(service)) {
                 throw new RuntimeException("Doctor does not serve this department");
             }
+
+            if (!Boolean.TRUE.equals(doctor.getAvailable())) {
+                throw new RuntimeException("Doctor not available");
+            }
         }
 
         Token token = new Token();
         token.setPatient(patient);
         token.setServiceType(service);
         token.setDoctor(doctor);
-        token.setPriority(req.isPriority());
-        token.setStatus(TokenStatus.WAITING);
         token.setCreatedAt(LocalDateTime.now());
         token.setTokenNumber(generateTokenNumber(service));
 
-        return tokenRepository.save(token);
-    }
+        if (req.isUrgent()) {
+            token.setPriorityType(TokenPriority.URGENT);
+            token.setApproved(false);
+            token.setStatus(TokenStatus.PENDING_APPROVAL);
+            Token saved = tokenRepository.save(token);
 
-    @Transactional
-    public Token createToken(Long serviceTypeId, boolean priority) {
-        ServiceType serviceType = serviceTypeRepository.findById(serviceTypeId)
-                .orElseThrow(() -> new RuntimeException("Service not found"));
+            // 🔔 REAL‑TIME ADMIN NOTIFICATION
+            eventPublisher.publishQueueUpdate(
+                    new QueueEvent(
+                            "EMERGENCY_CREATED",
+                            saved.getTokenNumber(),
+                            null,
+                            service.getName(),
+                            "PENDING_APPROVAL"
+                    )
+            );
 
-        Token token = new Token();
-        token.setServiceType(serviceType);
-        token.setPriority(priority);
+            return saved;
+        }
+        token.setPriorityType(TokenPriority.NORMAL);
+        token.setApproved(true);
         token.setStatus(TokenStatus.WAITING);
-        token.setCreatedAt(LocalDateTime.now());
-        token.setTokenNumber(generateTokenNumber(serviceType));
+        token.setPriority(req.isUrgent());
 
         Token saved = tokenRepository.save(token);
-
-        eventPublisher.publishQueueUpdate(
-                new QueueEvent(
-                        "TOKEN_CREATED",
-                        saved.getTokenNumber(),
-                        null,
-                        serviceType.getName(),
-                        saved.getStatus().name()
-                )
-        );
-
         return saved;
     }
+
 
     private String generateTokenNumber(ServiceType serviceType) {
         // Example: CASH → C101, DOCTOR → D205
@@ -117,6 +149,78 @@ public class TokenService {
             token.setCompletedAt(LocalDateTime.now());
         }
         tokenRepository.save(token);
+    }
+    @Transactional
+    public Token approveEmergency(Long tokenId) {
+        Token token = tokenRepository.findById(tokenId)
+                .orElseThrow(() -> new RuntimeException("Token not found"));
+        if (token.getPriorityType() != TokenPriority.URGENT) {
+            throw new RuntimeException("Not an emergency token");
+        }
+        token.setApproved(true);
+        token.setStatus(TokenStatus.WAITING);
+        Optional<Counter> freeDoctor =
+                counterRepository.findFirstByDepartmentsContainsAndAvailability(
+                        token.getServiceType(),
+                        DoctorAvailability.AVAILABLE
+                );
+
+        if (freeDoctor.isPresent()) {
+            Counter doctor = freeDoctor.get();
+
+            token.setDoctor(doctor);
+            doctor.setAvailability(DoctorAvailability.BUSY);
+            counterRepository.save(doctor);
+        }
+
+        Token saved = tokenRepository.save(token);
+        QueueEvent event = new QueueEvent(
+                "EMERGENCY_APPROVED",
+                token.getTokenNumber(),
+                null,
+                token.getServiceType().getName(),
+                "WAITING"
+        );
+        eventPublisher.publishQueueUpdate(event);
+        eventPublisher.publishToPatient(
+                token.getTokenNumber(),
+                event
+        );
+        return saved;
+    }
+    @Transactional
+    public void rejectEmergency(Long tokenId) {
+        Token token = tokenRepository.findById(tokenId)
+                .orElseThrow(() -> new RuntimeException("Token not found"));
+
+        if (token.getPriorityType() != TokenPriority.URGENT) {
+            throw new RuntimeException("Not an emergency token");
+        }
+
+        token.setApproved(false);
+        token.setStatus(TokenStatus.CANCELLED);
+
+        tokenRepository.save(token);
+
+        eventPublisher.publishQueueUpdate(
+                new QueueEvent(
+                        "EMERGENCY_REJECTED",
+                        token.getTokenNumber(),
+                        null,
+                        token.getServiceType().getName(),
+                        token.getStatus().name()
+                )
+        );
+    }
+
+    private Patient mapPatient(CreatePatientDto dto) {
+        Patient p = new Patient();
+        p.setName(dto.getName());
+        p.setAge(dto.getAge());
+        p.setGender(dto.getGender());
+        p.setPhone(dto.getPhone());
+        p.setMedicalId(dto.getMedicalId());
+        return p;
     }
 }
 
