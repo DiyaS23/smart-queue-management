@@ -18,5 +18,7 @@ public class TokenResponse {
     private String status;
     private boolean priority;
     private String counterName;
+    private String patientName;
+    private String doctorName;
     private LocalDateTime createdAt;
 }

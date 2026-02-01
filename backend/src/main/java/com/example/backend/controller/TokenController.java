@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+import com.example.backend.dto.CreatePatientTokenRequest;
 import com.example.backend.dto.CreateTokenRequest;
 import com.example.backend.dto.QueueStatusResponse;
 import com.example.backend.dto.TokenResponse;
@@ -8,6 +9,7 @@ import com.example.backend.entity.Token;
 import com.example.backend.entity.enums.TokenStatus;
 import com.example.backend.service.QueueService;
 import com.example.backend.service.TokenService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import lombok.Data;
@@ -28,6 +30,13 @@ public class TokenController {
                 request.getServiceTypeId(),
                 request.isPriority()
         );
+        return mapToResponse(token);
+    }
+    @PostMapping("/patient")
+    public TokenResponse createPatientToken(
+            @RequestBody @Valid CreatePatientTokenRequest request) {
+
+        Token token = tokenService.createPatientToken(request);
         return mapToResponse(token);
     }
 
@@ -61,6 +70,12 @@ public class TokenController {
                 token.getDoctor() != null ? token.getDoctor().getName() : null
         );
         res.setCreatedAt(token.getCreatedAt());
+        res.setPatientName(
+                token.getPatient() != null ? token.getPatient().getName() : null
+        );
+        res.setDoctorName(
+                token.getDoctor() != null ? token.getDoctor().getName() : null
+        );
         return res;
     }
 }

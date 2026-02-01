@@ -1,8 +1,13 @@
 package com.example.backend.service;
 
+import com.example.backend.dto.CreatePatientTokenRequest;
+import com.example.backend.entity.Counter;
+import com.example.backend.entity.Patient;
 import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
 import com.example.backend.entity.enums.TokenStatus;
+import com.example.backend.repository.CounterRepository;
+import com.example.backend.repository.PatientRepository;
 import com.example.backend.repository.ServiceTypeRepository;
 import com.example.backend.repository.TokenRepository;
 import com.example.backend.websocket.QueueEvent;
@@ -21,12 +26,53 @@ public class TokenService {
     private final TokenRepository tokenRepository;
     private final ServiceTypeRepository serviceTypeRepository;
     private final QueueEventPublisher eventPublisher;
+    private final PatientRepository patientRepository;
+    private final CounterRepository counterRepository;
 // Inside TokenService.java
 
     public List<Token> getTokensByStatus(TokenStatus status) {
         // Assuming you have a TokenRepository injected as 'tokenRepository'
         return tokenRepository.findByStatus(status);
     }
+    @Transactional
+    public Token createPatientToken(CreatePatientTokenRequest req) {
+        Patient patient = patientRepository
+                .findByPhone(req.getPatient().getPhone())
+                .orElseGet(() -> {
+                    Patient p = new Patient();
+                    p.setName(req.getPatient().getName());
+                    p.setAge(req.getPatient().getAge());
+                    p.setGender(req.getPatient().getGender());
+                    p.setPhone(req.getPatient().getPhone());
+                    p.setMedicalId(req.getPatient().getMedicalId());
+                    return patientRepository.save(p);
+                });
+
+        ServiceType service = serviceTypeRepository.findById(req.getServiceTypeId())
+                .orElseThrow(() -> new RuntimeException("Service not found"));
+
+        Counter doctor = null;
+        if (req.getDoctorId() != null) {
+            doctor = counterRepository.findById(req.getDoctorId())
+                    .orElseThrow(() -> new RuntimeException("Doctor not found"));
+
+            if (!doctor.getDepartments().contains(service)) {
+                throw new RuntimeException("Doctor does not serve this department");
+            }
+        }
+
+        Token token = new Token();
+        token.setPatient(patient);
+        token.setServiceType(service);
+        token.setDoctor(doctor);
+        token.setPriority(req.isPriority());
+        token.setStatus(TokenStatus.WAITING);
+        token.setCreatedAt(LocalDateTime.now());
+        token.setTokenNumber(generateTokenNumber(service));
+
+        return tokenRepository.save(token);
+    }
+
     @Transactional
     public Token createToken(Long serviceTypeId, boolean priority) {
         ServiceType serviceType = serviceTypeRepository.findById(serviceTypeId)
