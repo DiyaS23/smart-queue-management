@@ -1,8 +1,11 @@
 package com.example.backend.controller;
 
+import com.example.backend.dto.CounterRequest;
 import com.example.backend.dto.TokenResponse;
+import com.example.backend.entity.Counter;
 import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
+import com.example.backend.repository.CounterRepository;
 import com.example.backend.repository.ServiceTypeRepository;
 import com.example.backend.service.CounterService;
 import lombok.Getter;
@@ -11,11 +14,14 @@ import lombok.Setter;
 import org.springframework.web.bind.annotation.*;
 import lombok.Data;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/counters")
 @RequiredArgsConstructor
 public class CounterController {
     private final CounterService counterService;
+    private final CounterRepository counterRepository;
     private final ServiceTypeRepository serviceTypeRepository;
 
     @PostMapping("/{counterId}/call-next/{serviceTypeId}")
