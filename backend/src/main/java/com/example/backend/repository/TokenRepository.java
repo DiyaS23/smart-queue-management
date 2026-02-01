@@ -42,5 +42,6 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
             TokenStatus status
     );
 
+    long countByServiceType(ServiceType service);
 }
 
