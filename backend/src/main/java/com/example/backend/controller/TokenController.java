@@ -27,7 +27,7 @@ public class TokenController {
     @PostMapping
     public TokenResponse createToken(@RequestBody CreateTokenRequest request) {
         Token token = tokenService.createToken(
-                request.getServiceTypeId(),
+                request.getServiceId(),
                 request.isPriority()
         );
         return mapToResponse(token);
