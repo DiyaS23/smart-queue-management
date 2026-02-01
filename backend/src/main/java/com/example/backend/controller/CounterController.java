@@ -52,7 +52,7 @@ public class CounterController {
         res.setTokenNumber(token.getTokenNumber());
         res.setServiceName(token.getServiceType().getName());
         res.setStatus(token.getStatus().name());
-        res.setCounterName(token.getCounter().getName());
+        res.setCounterName(token.getPatient().getName());
         return res;
     }
 }

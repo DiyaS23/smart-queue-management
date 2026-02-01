@@ -58,7 +58,7 @@ public class TokenController {
         res.setStatus(token.getStatus().name());
         res.setPriority(token.isPriority());
         res.setCounterName(
-                token.getCounter() != null ? token.getCounter().getName() : null
+                token.getDoctor() != null ? token.getDoctor().getName() : null
         );
         res.setCreatedAt(token.getCreatedAt());
         return res;
