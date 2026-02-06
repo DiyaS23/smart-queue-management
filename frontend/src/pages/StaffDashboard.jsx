@@ -8,7 +8,7 @@ import {
   SkipForward,
   Users
 } from 'lucide-react'
-import { fetchServices } from '../api/serviceApi'
+import { fetchNonServices, fetchServices } from '../api/serviceApi'
 import { fetchCounters } from '../api/adminApi'
 import { callNextToken, completeToken, skipToken } from '../api/counterApi'
 import { getStompClient, subscribe } from '../websocket/socket'
@@ -26,7 +26,7 @@ export default function StaffDashboard() {
   const [isOnBreak, setIsOnBreak] = useState(false)
 
   useEffect(() => {
-    fetchServices().then(setServices).catch((err) => setError(err.message))
+    fetchNonServices().then(setServices).catch((err) => setError(err.message))
     fetchCounters().then(setCounters).catch((err) => setError(err.message))
   }, [])
 
