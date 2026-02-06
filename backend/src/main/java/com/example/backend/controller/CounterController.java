@@ -5,6 +5,7 @@ import com.example.backend.dto.TokenResponse;
 import com.example.backend.entity.Counter;
 import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
+import com.example.backend.entity.enums.DoctorAvailability;
 import com.example.backend.repository.CounterRepository;
 import com.example.backend.repository.ServiceTypeRepository;
 import com.example.backend.service.CounterService;
@@ -35,7 +36,12 @@ public class CounterController {
         Token token = counterService.callNextToken(counterId, serviceType);
         return map(token);
     }
-
+    @PutMapping("/{counterId}/availability")
+    public void updateAvailability(
+            @PathVariable Long counterId,
+            @RequestParam DoctorAvailability availability) {
+        counterService.updateAvailability(counterId, availability);
+    }
     @PutMapping("/tokens/{tokenId}/complete")
     public void completeToken(@PathVariable Long tokenId) {
         counterService.completeToken(tokenId);

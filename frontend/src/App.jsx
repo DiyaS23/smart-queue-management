@@ -1,34 +1,48 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import PatientKiosk from './pages/PatientKiosk'
+import DisplayBoard from './pages/DisplayBoard'
+import Login from './pages/Login'
+import PatientHistory from './pages/PatientHistory'
+import StaffDashboard from './pages/StaffDashboard'
+import AdminDashboard from './pages/AdminDashboard'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
+import Navbar from './components/Navbar'
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <BrowserRouter>
+      <AuthProvider>
+        <div className="min-h-screen flex flex-col">
+          <Navbar />
+          <main className="flex-1">
+            <Routes>
+              <Route path="/" element={<Navigate to="/kiosk" replace />} />
+              <Route path="/kiosk" element={<PatientKiosk />} />
+              <Route path="/display" element={<DisplayBoard />} />
+              <Route path="/history" element={<PatientHistory />} />
+              <Route path="/login" element={<Login />} />
+
+              <Route
+                element={
+                  <ProtectedRoute allowedRoles={['ROLE_STAFF', 'ROLE_ADMIN']} />
+                }
+              >
+                <Route path="/staff" element={<StaffDashboard />} />
+              </Route>
+
+              <Route
+                element={<ProtectedRoute allowedRoles={['ROLE_ADMIN']} />}
+              >
+                <Route path="/admin" element={<AdminDashboard />} />
+              </Route>
+
+              <Route path="*" element={<Navigate to="/kiosk" replace />} />
+            </Routes>
+          </main>
+        </div>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
 

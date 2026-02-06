@@ -29,14 +29,13 @@ public class JwtUtil {
     }
 
     public String generateToken(UserDetails userDetails) {
+        String authority = userDetails.getAuthorities().iterator().next().getAuthority();
+        String roleClaim = authority.startsWith("ROLE_") ? authority : "ROLE_" + authority;
         return Jwts.builder()
                 .setSubject(userDetails.getUsername())
                 .claim(
                         "role",
-                        userDetails.getAuthorities()
-                                .iterator()
-                                .next()
-                                .getAuthority()
+                        roleClaim
                 )
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMs))

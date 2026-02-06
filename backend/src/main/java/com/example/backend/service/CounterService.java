@@ -122,7 +122,23 @@ public class CounterService {
         token.setStatus(TokenStatus.SKIPPED);
         tokenRepository.save(token);
     }
+    @Transactional
+    public void updateAvailability(Long counterId, DoctorAvailability availability) {
+        Counter counter = counterRepository.findById(counterId)
+                .orElseThrow(() -> new RuntimeException("Counter not found"));
 
+        counter.setAvailability(availability);
+        counterRepository.save(counter);
+
+        // Notify all dashboards that a doctor's status changed
+        eventPublisher.publishCounterUpdate(new QueueEvent(
+                "DOCTOR_STATUS_CHANGED",
+                null,
+                counter.getName(),
+                null,
+                availability.name()
+        ));
+    }
     private void updateMetrics(Token token) {
 
         if (token.getCalledAt() == null || token.getCompletedAt() == null) {

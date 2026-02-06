@@ -22,8 +22,9 @@ public class ServiceType {
     private String name;
 
     // average service time in minutes
-    private Integer avgServiceTime;
+    @Column(nullable = false)
+    private Integer avgServiceTime=0;
 
-    private boolean priorityAllowed;
+    private boolean priorityAllowed=true;
 }
 
