@@ -38,7 +38,11 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
             TokenStatus status
     );
 
-
+    List<Token> findByStatusAndPriorityTypeAndApproved(
+            TokenStatus status,
+            TokenPriority priorityType,
+            boolean approved
+    );
     Optional<Token> findFirstByServiceTypeAndDoctorIsNullAndStatusOrderByCreatedAtAsc(
             ServiceType serviceType,
             TokenStatus status

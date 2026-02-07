@@ -20,4 +20,7 @@ export async function fetchPatientHistoryByDoctor(phone, doctorId) {
   })
   return response.data
 }
+export const fetchServiceTypes = () => {
+  return httpClient.get('/api/services');
+};
 

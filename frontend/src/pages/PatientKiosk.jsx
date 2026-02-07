@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle, Bell, Clock, Globe, IdCard, Loader2, Printer } from 'lucide-react'
-import { fetchServices } from '../api/serviceApi'
+import { fetchNonServices } from '../api/serviceApi'
 import { createPatientToken, getEtaForToken } from '../api/tokenApi'
 import { getStompClient, subscribe } from '../websocket/socket'
 
@@ -29,7 +29,7 @@ export default function PatientKiosk() {
   const [helpRequested, setHelpRequested] = useState(false)
 
   useEffect(() => {
-    fetchServices()
+    fetchNonServices()
       .then(setServices)
       .catch((err) => setError(err.message || 'Failed to load departments'))
   }, [])
@@ -95,37 +95,75 @@ export default function PatientKiosk() {
     }))
   }
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault()
+  //   setError(null)
+
+  //   if (!form.serviceId) {
+  //     setError('Please select a department')
+  //     return
+  //   }
+
+  //   setSubmitting(true)
+  //   try {
+  //     const payload = {
+  //       name: form.name.trim(),
+  //       age: form.age ? Number(form.age) : null,
+  //       phone: form.phone.trim(),
+  //       gender: form.gender,
+  //       serviceId: Number(form.serviceId),
+  //       priority: Boolean(form.priority)
+  //     }
+
+  //     const token = await createPatientToken(payload)
+  //     setTokenInfo(token)
+
+  //     const eta = await getEtaForToken(token.id)
+  //     setEtaMinutes(eta)
+  //   } catch (err) {
+  //     setError(err.message || 'Failed to register patient')
+  //   } finally {
+  //     setSubmitting(false)
+  //   }
+  // }
+
+
+
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError(null)
+  e.preventDefault()
+  setError(null)
 
-    if (!form.serviceId) {
-      setError('Please select a department')
-      return
-    }
+  if (!form.serviceId) {
+    setError('Please select a department')
+    return
+  }
 
-    setSubmitting(true)
-    try {
-      const payload = {
+  setSubmitting(true)
+
+  try {
+    // ✅ MATCHES CreatePatientTokenRequest DTO EXACTLY
+    const payload = {
+      patient: {
         name: form.name.trim(),
         age: form.age ? Number(form.age) : null,
         phone: form.phone.trim(),
-        gender: form.gender,
-        serviceId: Number(form.serviceId),
-        priority: Boolean(form.priority)
-      }
-
-      const token = await createPatientToken(payload)
-      setTokenInfo(token)
-
-      const eta = await getEtaForToken(token.id)
-      setEtaMinutes(eta)
-    } catch (err) {
-      setError(err.message || 'Failed to register patient')
-    } finally {
-      setSubmitting(false)
+        gender: form.gender
+      },
+      serviceTypeId: Number(form.serviceId),
+      urgent: Boolean(form.priority)
     }
+
+    const token = await createPatientToken(payload)
+    setTokenInfo(token)
+
+    const eta = await getEtaForToken(token.id)
+    setEtaMinutes(eta)
+  } catch (err) {
+    setError(err.message || 'Failed to register patient')
+  } finally {
+    setSubmitting(false)
   }
+}
 
   const handleNewToken = () => {
     setTokenInfo(null)

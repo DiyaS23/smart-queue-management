@@ -72,6 +72,64 @@ public class TokenService {
     // -------------------------------
     // NEW HOSPITAL FLOW
     // -------------------------------
+//    @Transactional
+//    public Token createPatientToken(CreatePatientTokenRequest req) {
+//
+//        Patient patient = patientRepository
+//                .findByPhone(req.getPatient().getPhone())
+//                .orElseGet(() -> patientRepository.save(mapPatient(req.getPatient())));
+//
+//        ServiceType service = serviceTypeRepository.findById(req.getServiceTypeId())
+//                .orElseThrow(() -> new RuntimeException("Service not found"));
+//
+//        Counter doctor = null;
+//        if (req.getDoctorId() != null) {
+//            doctor = counterRepository.findById(req.getDoctorId())
+//                    .orElseThrow(() -> new RuntimeException("Doctor not found"));
+//
+//            if (!doctor.getDepartments().contains(service)) {
+//                throw new RuntimeException("Doctor does not serve this department");
+//            }
+//
+//            if (!Boolean.TRUE.equals(doctor.getAvailable())) {
+//                throw new RuntimeException("Doctor not available");
+//            }
+//        }
+//
+//        Token token = new Token();
+//        token.setPatient(patient);
+//        token.setServiceType(service);
+//        token.setDoctor(doctor);
+//        token.setCreatedAt(LocalDateTime.now());
+//        token.setTokenNumber(generateTokenNumber(service));
+//
+//        if (req.isUrgent()) {
+//            token.setPriorityType(TokenPriority.URGENT);
+//            token.setApproved(false);
+//            token.setStatus(TokenStatus.PENDING_APPROVAL);
+//            Token saved = tokenRepository.save(token);
+//
+//            // 🔔 REAL‑TIME ADMIN NOTIFICATION
+//            eventPublisher.publishQueueUpdate(
+//                    new QueueEvent(
+//                            "EMERGENCY_CREATED",
+//                            saved.getTokenNumber(),
+//                            null,
+//                            service.getName(),
+//                            "PENDING_APPROVAL"
+//                    )
+//            );
+//
+//            return saved;
+//        }
+//        token.setPriorityType(TokenPriority.NORMAL);
+//        token.setApproved(true);
+//        token.setStatus(TokenStatus.WAITING);
+//        token.setPriority(req.isUrgent());
+//
+//        Token saved = tokenRepository.save(token);
+//        return saved;
+//    }
     @Transactional
     public Token createPatientToken(CreatePatientTokenRequest req) {
 
@@ -103,32 +161,35 @@ public class TokenService {
         token.setCreatedAt(LocalDateTime.now());
         token.setTokenNumber(generateTokenNumber(service));
 
+        // 🔴 EMERGENCY FLOW (FIXED)
         if (req.isUrgent()) {
+            token.setPriority(true); // ✅ REQUIRED
             token.setPriorityType(TokenPriority.URGENT);
             token.setApproved(false);
             token.setStatus(TokenStatus.PENDING_APPROVAL);
+
             Token saved = tokenRepository.save(token);
 
-            // 🔔 REAL‑TIME ADMIN NOTIFICATION
             eventPublisher.publishQueueUpdate(
                     new QueueEvent(
                             "EMERGENCY_CREATED",
                             saved.getTokenNumber(),
                             null,
                             service.getName(),
-                            "PENDING_APPROVAL"
+                            TokenStatus.PENDING_APPROVAL.name()
                     )
             );
 
             return saved;
         }
+
+        // 🟢 NORMAL FLOW
+        token.setPriority(false);
         token.setPriorityType(TokenPriority.NORMAL);
         token.setApproved(true);
         token.setStatus(TokenStatus.WAITING);
-        token.setPriority(req.isUrgent());
 
-        Token saved = tokenRepository.save(token);
-        return saved;
+        return tokenRepository.save(token);
     }
 
 

@@ -6,6 +6,7 @@ import com.example.backend.entity.Counter;
 import com.example.backend.entity.ServiceType;
 import com.example.backend.entity.Token;
 import com.example.backend.entity.enums.TokenPriority;
+import com.example.backend.entity.enums.TokenStatus;
 import com.example.backend.repository.CounterRepository;
 import com.example.backend.repository.ServiceTypeRepository;
 import com.example.backend.repository.TokenRepository;
@@ -47,7 +48,11 @@ public class AdminController {
     @GetMapping("/emergencies")
     public List<TokenResponse> getPendingEmergencies() {
         return tokenRepository
-                .findByPriorityTypeAndApprovedFalse(TokenPriority.URGENT)
+                .findByStatusAndPriorityTypeAndApproved(
+                        TokenStatus.PENDING_APPROVAL,
+                        TokenPriority.URGENT,
+                        false
+                )
                 .stream()
                 .map(this::map)
                 .toList();
