@@ -72,6 +72,12 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
             LocalDateTime end
     );
 
+    Optional<Token> findFirstByServiceTypeAndStatusAndApprovedAndPriorityTypeOrderByCreatedAtAsc(
+            ServiceType serviceType,
+            TokenStatus status,
+            boolean approved,
+            TokenPriority priorityType
+    );
 
     Optional<Token> findFirstByStatusAndApprovedAndPriorityTypeOrderByCreatedAtAsc(TokenStatus tokenStatus, boolean b, TokenPriority tokenPriority);
 

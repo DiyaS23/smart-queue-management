@@ -36,6 +36,8 @@ public class SecurityConfig {
                         sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // PUBLIC
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/tokens/patient").permitAll()
+                        .requestMatchers("/api/tokens/**").permitAll()
                         .requestMatchers("/api/tokens/**").permitAll()
                         .requestMatchers("/api/display/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()

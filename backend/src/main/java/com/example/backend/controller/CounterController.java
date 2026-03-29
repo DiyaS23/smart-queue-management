@@ -12,10 +12,12 @@ import com.example.backend.service.CounterService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/counters")
@@ -26,7 +28,7 @@ public class CounterController {
     private final ServiceTypeRepository serviceTypeRepository;
 
     @PostMapping("/{counterId}/call-next/{serviceTypeId}")
-    public TokenResponse callNext(
+    public ResponseEntity<?> callNext(
             @PathVariable Long counterId,
             @PathVariable Long serviceTypeId
     ) {
@@ -34,7 +36,15 @@ public class CounterController {
                 .orElseThrow(() -> new RuntimeException("Service not found"));
 
         Token token = counterService.callNextToken(counterId, serviceType);
-        return map(token);
+
+        // ✅ HANDLE NO PATIENT CASE
+        if (token == null) {
+            return ResponseEntity.ok(Map.of(
+                    "message", "NO_PATIENT"
+            ));
+        }
+
+        return ResponseEntity.ok(map(token));
     }
     @PutMapping("/{counterId}/availability")
     public void updateAvailability(

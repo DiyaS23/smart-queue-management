@@ -35,7 +35,8 @@ public class QueueService {
     public Token getNextToken(ServiceType serviceType, Counter doctor) {
 
         Optional<Token> emergency =
-                tokenRepository.findFirstByStatusAndApprovedAndPriorityTypeOrderByCreatedAtAsc(
+                tokenRepository.findFirstByServiceTypeAndStatusAndApprovedAndPriorityTypeOrderByCreatedAtAsc(
+                        serviceType,
                         TokenStatus.WAITING,
                         true,
                         TokenPriority.URGENT
